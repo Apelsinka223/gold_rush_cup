@@ -1,0 +1,8 @@
+_build
+deps
+test
+logs
+.idea
+docker-compose.yml
+Dockerfile
+gold_rush_cup.iml
