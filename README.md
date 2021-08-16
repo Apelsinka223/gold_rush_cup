@@ -5,7 +5,7 @@ An application for the online championship [Gold Rush Cup](https://cups.mail.ru/
 Finished with [120th](https://cups.mail.ru/en/results/goldrush?page=14&period=past&roundId=598) position in Battle Round.
 
 The app was written in order of enterntainship, to push Elixir to its boundaries, and to compair different approaches of concurrency.
-Don't take it too seriously 🙂
+Don't take it too seriously 🙂 This is a few-nights project, so it doesn't have appropriate code-style, tests, long-term arhitecture, CD.
 
 During the development, I tried to use different tools to build a concurrent working application, like:
 - poolboy and pool of domain oriented processes
