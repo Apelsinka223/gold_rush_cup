@@ -1,50 +1,43 @@
 defmodule GoldRushCup.Exchanger do
   @moduledoc false
 
-  use GenStage
-  alias GoldRushCup.{TaskSupervisor, API, LicenseHolder, Wallet, ExchangerWorker}
+  use GenServer
+  alias GoldRushCup.{TaskSupervisor, API, LicenseHolder, Wallet}
+  require Logger
 
   def start_link(_opts) do
-    GenStage.start_link(__MODULE__, %{}, [name: __MODULE__])
+    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
   def init(_opts) do
-    {:producer, %{demand: 0, treasure_list: []}, dispatcher: GenStage.DemandDispatcher}
+    Logger.debug("Exchanger started #{inspect(self())}")
+    {:ok, %{}}
   end
 
   def exchange(treasure_list) do
-    GenStage.cast(__MODULE__, {:exchange, treasure_list})
+    GenServer.cast(__MODULE__, {:exchange, treasure_list})
   end
 
   def handle_cast({:exchange, treasure_list}, state) do
-#    treasure_list
-#    |> Enum.each(fn treasure_id ->
-#      # Task.Supervisor.async_nolink(TaskSupervisor, fn ->
-#      ExchangerWorker.exchange(treasure_id)
-#      #end)
-#    end)
+    treasure_list
+    |> Enum.each(fn treasure_id ->
+      Task.Supervisor.async_nolink(TaskSupervisor, fn ->
+        API.exchange_treasure(treasure_id)
+      end)
+    end)
 
-    {demanded, rest_treasure_list} =
-      if state.demand > 0 and state.treasure_list == [] do
-         Enum.split(treasure_list, state.demand)
-      else
-        {[], treasure_list}
-      end
-    {:noreply, demanded, %{state | treasure_list: rest_treasure_list ++ state.treasure_list}}
+    {:noreply, state}
   end
 
-
-  def handle_demand(demand, state) do
-    {demanded, rest_treasure_list} = Enum.split(state.treasure_list, state.demand + demand)
-
-    {
-      :noreply,
-      demanded,
-      %{
-        state |
-        demand: state.demand + demand - Enum.count(demanded),
-        treasure_list: rest_treasure_list
-      }
-    }
+  def handle_info({task_ref, result}, state) do
+    with _ = Process.demonitor(task_ref, [:flush]),
+         {:ok, wallet} <- result do
+      Logger.debug("Treasure cost #{Enum.count(wallet)}")
+      Wallet.put_coins(wallet)
+      {:noreply, state}
+    else
+      {:error, reason} ->
+        {:stop, reason, state}
+    end
   end
 end

@@ -11,8 +11,8 @@ defmodule GoldRushCup.Tesla.RetaLimiterMiddleware do
           Tesla.run(env, next)
 
         :error ->
-           Process.sleep(options[:timeout])
-           call(env, next, options)
+          Process.sleep(options[:timeout])
+          call(env, next, options)
       end
     else
       Tesla.run(env, next)

@@ -8,5 +8,5 @@
 import Config
 
 config :gold_rush_cup, :api,
-       address: System.get_env("ADDRESS", "localhost"),
-       port: "8000"
+  address: System.get_env("ADDRESS", "localhost"),
+  port: "8000"

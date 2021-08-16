@@ -4,7 +4,7 @@ defmodule GoldRushCup do
   use GenServer
 
   def start_link(state, opts) do
-    GenServer.start_link(__MODULE__, state, [name: __MODULE__])
+    GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
 
   def init(_opts) do

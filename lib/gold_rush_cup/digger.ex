@@ -1,81 +1,79 @@
 defmodule GoldRushCup.Digger do
   @moduledoc false
 
-  use GenStage
-  alias GoldRushCup.{TaskSupervisor, API, LicenseHolder, Exchanger, DiggerWorker}
+  use GenServer
+  alias GoldRushCup.{TaskSupervisor, API, LicenseHolder, Exchanger}
+  require Logger
 
-  def start_link(digger_ets) do
-    GenStage.start_link(__MODULE__, digger_ets, [name: __MODULE__])
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  def init(digger_ets) do
-    Process.flag(:trap_exit, true)
-    {:producer, %{ets: digger_ets, demand: 0}, dispatcher: GenStage.DemandDispatcher}
-#    {:ok, digger_ets}
+  def init(_opts) do
+    Logger.debug("Digger started #{inspect(self())}")
+    {:ok, %{coordinates: []}}
   end
 
-  def dig(coordinates), do: GenStage.cast(__MODULE__, {:dig, coordinates})
-
-  def full, do: GenServer.cast(__MODULE__, :full)
+  def dig(coordinates), do: GenServer.cast(__MODULE__, {:dig, coordinates})
 
   def handle_cast({:dig, coordinates}, state) do
-    if state.demand > 0 and :ets.lookup(state.ets, {coordinates.depth, coordinates.x, coordinates.y}) == [] do
-       {:noreply, [{coordinates.depth, coordinates.x, coordinates.y}], state}
+    if state.coordinates == [] do
+      send(self(), :dig)
+    end
+
+    {:noreply, %{state | coordinates: [coordinates | state.coordinates]}}
+  end
+
+  def handle_info(:dig, %{coordinates: []} = state), do: {:noreply, state}
+
+  def handle_info(:dig, state) do
+    with max_depth_coordinates = Enum.max_by(state.coordinates, & &1.depth),
+         {:ok, license} <- LicenseHolder.get_license(),
+         coordinates = %{max_depth_coordinates | depth: max_depth_coordinates.depth + 1},
+         %{depth: depth} when depth <= 10 <- coordinates do
+      Task.Supervisor.async_nolink(TaskSupervisor, fn ->
+        API.dig(license, coordinates)
+      end)
+
+      state = %{state | coordinates: List.delete(state.coordinates, max_depth_coordinates)}
+
+      if state.coordinates != [] do
+        send(self(), :dig)
+      end
+
+      {:noreply, state}
     else
-      :ets.insert_new(state.ets, {{coordinates.depth, coordinates.x, coordinates.y}})
-      |> case do
-          true ->
-            :ok
-  #          DiggerWorker.dig()
-
-          false ->
-            IO.inspect({coordinates.depth, coordinates.x, coordinates.y}, label: :duplicate)
-         end
-
-      {:noreply, [], state}
-    end
-  end
-
-  def handle_demand(demand, state) do
-    demanded =
-      1..(state.demand + demand)
-      |> Enum.reduce_while([], fn _, acc ->
-           with {_, _, _} = key <- :ets.last(state.ets),
-                true = :ets.delete(state.ets, key) do
-             {:cont, [key | acc]}
-           else
-             :"$end_of_table" ->
-               {:halt, acc}
-           end
-         end)
-     |> Enum.filter(& &1)
-
-    {:noreply, demanded, %{state | demand: state.demand + demand - Enum.count(demanded)}}
-  end
-
-  def handle_cast(:full, digger_ets) do
-    Process.send_after(self(), :check_status, 100)
-    {:noreply, digger_ets}
-  end
-
-  def handle_info(:check_status, digger_ets) do
-    case :poolboy.status(:digger_worker) do
-    {:ready, free, _, _} ->
-      count = :ets.tab2list(digger_ets) |> Enum.count()
-      Enum.each(1..min(count, free), fn _ -> DiggerWorker.dig() end)
-
-        if count > free do
-          Process.send_after(self(), :check_status, 100)
+      %{} ->
+        if state.coordinates != [] do
+          send(self(), :dig)
         end
-      _ ->
-        Process.send_after(self(), :check_status, 100)
-    end
 
-    {:noreply, digger_ets}
+        {:noreply, state}
+
+      {:error, reason} ->
+        {:stop, reason, state}
+    end
   end
 
-  def handle_info({:DOWN, _, _} = a, state) do
-    IO.inspect(a)
-    {:noreply, state}
+  def handle_info({task_ref, {:ok, [], coordinates}}, strategy) do
+    Process.demonitor(task_ref, [:flush])
+
+    if coordinates.depth < 10 do
+      GenServer.cast(__MODULE__, {:dig, coordinates})
+    end
+
+    {:noreply, strategy}
+  end
+
+  def handle_info({task_ref, {:ok, treasure_list, coordinates}}, strategy) do
+    Process.demonitor(task_ref, [:flush])
+    Logger.debug("Treasure found #{inspect(coordinates)}")
+    Exchanger.exchange(treasure_list)
+    {:noreply, strategy}
+  end
+
+  def handle_info({task_ref, {:error, reason}}, strategy) do
+    Process.demonitor(task_ref, [:flush])
+    {:stop, reason, strategy}
   end
 end

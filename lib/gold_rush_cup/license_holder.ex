@@ -3,12 +3,14 @@ defmodule GoldRushCup.LicenseHolder do
 
   use GenServer
   alias GoldRushCup.{TaskSupervisor, API, Wallet}
+  require Logger
 
   def start_link(_opts) do
-    GenServer.start_link(__MODULE__, %{}, [name: __MODULE__])
+    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
   def init(_opts) do
+    Logger.debug("LicenseHolder started #{inspect(self())}")
     {:ok, %{licenses: [], callers: [], cost: 1}, {:continue, :start}}
   end
 
@@ -33,24 +35,24 @@ defmodule GoldRushCup.LicenseHolder do
   def handle_info(:request_new_license, state) do
     with {:ok, coins} <- Wallet.get_coins(state.cost) do
       Task.Supervisor.async_nolink(TaskSupervisor, fn ->
-  #     send(self(), {nil,
-         API.get_license([])
-  #     })
+        API.get_license(coins)
       end)
+
+      {:noreply, state}
     else
       {:error, :balance_not_enough} ->
         Task.Supervisor.async_nolink(TaskSupervisor, fn ->
-#    #   send(self(), {nil,
           API.get_license([])
-#    #   })
         end)
-    end
 
-    {:noreply, state}
+        Logger.debug("Balance not enough")
+
+        {:noreply, state}
+    end
   end
 
   def handle_info({task_ref, {:error, :not_enough_coins}}, state) do
-    IO.inspect(state.cost, label: :not_enough_coins)
+    Logger.debug("Not enough coins #{state.cost}")
     Process.demonitor(task_ref, [:flush])
     send(self(), :request_new_license)
     {:noreply, %{state | cost: state.cost + 1}}
@@ -58,32 +60,38 @@ defmodule GoldRushCup.LicenseHolder do
 
   def handle_info({task_ref, {:error, :no_more_licenses}}, state) do
     Process.demonitor(task_ref, [:flush])
-    Process.send_after(self(), :request_new_license, 100)
+    Logger.debug("No more licenses")
     {:noreply, state}
   end
 
   def handle_info({task_ref, {:error, reason}}, state) do
-     Process.demonitor(task_ref, [:flush])
+    Process.demonitor(task_ref, [:flush])
     {:stop, reason, state}
   end
 
   def handle_info({task_ref, {:ok, license}}, %{licenses: licenses, callers: []} = state) do
     Process.demonitor(task_ref, [:flush])
+    Logger.debug("New license #{inspect(license)}")
     {:noreply, %{state | licenses: licenses ++ [license]}}
   end
 
   def handle_info({task_ref, {:ok, license}}, %{licenses: licenses, callers: callers} = state) do
-     Process.demonitor(task_ref, [:flush])
+    Process.demonitor(task_ref, [:flush])
 
     {send_to_callers, rest_callers} = Enum.split(callers, license.dig_allowed)
-    Enum.each(send_to_callers, & GenServer.reply(&1, {:ok, license}))
+    Enum.each(send_to_callers, &GenServer.reply(&1, {:ok, license}))
 
     count = Enum.count(send_to_callers)
+
+    if rest_callers != [] do
+      Logger.debug("License expired #{inspect(license)}")
+      send(self(), :request_new_license)
+    end
 
     if count < license.dig_allowed do
       license = %{license | dig_used: license.dig_used + count}
 
-      {:noreply, %{state | callers: rest_callers, licenses: [license | licenses]}}
+      {:noreply, %{state | callers: [], licenses: [license | licenses]}}
     else
       {:noreply, %{state | callers: rest_callers, licenses: licenses}}
     end
@@ -97,6 +105,7 @@ defmodule GoldRushCup.LicenseHolder do
     with [license | rest_licenses] <- licenses,
          license = %{license | dig_used: license.dig_used + 1} do
       if license.dig_used == license.dig_allowed do
+        Logger.debug("License expired #{inspect(license)}")
         send(self(), :request_new_license)
         {:reply, {:ok, license}, %{state | licenses: rest_licenses}}
       else

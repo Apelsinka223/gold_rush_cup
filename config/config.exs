@@ -7,7 +7,6 @@
 # General application configuration
 use Mix.Config
 
-
 # Configures Elixir's Logger
 config :logger, :console,
   format: "$date $time $metadata[$level] $message\n",
@@ -23,10 +22,10 @@ config :ex_rated,
   name: :ex_rated,
   ets_table_name: :ets_rated_test_buckets
 
-#config :logger,
+# config :logger,
 #       backends: [:console, Sentry.LoggerBackend]
 
-#config :sentry, dsn: "https://91fb935a103b4243915479e95cc73e4c@o547895.ingest.sentry.io/5670771",
+# config :sentry, dsn: "https://91fb935a103b4243915479e95cc73e4c@o547895.ingest.sentry.io/5670771",
 #   included_environments: [:prod, :dev],
 #   environment_name: Mix.env()
 
