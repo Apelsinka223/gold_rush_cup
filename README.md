@@ -27,7 +27,7 @@ Some of the good decisions:
 
 - You might want to download and run the [API mock](https://github.com/Apelsinka223/gold_rush_cup_mock) first
 - `mix deps.get`
-- `mix run` - simple run or `iex -S mix run` - in order to see logs and that it is doing something 😀
+- `iex -S mix run`
 
 ## What could have been done better:
 - Algorithm to find best price of the license, or even should it be used at all
