@@ -1,5 +1,14 @@
 defmodule GoldRushCup.Exchanger do
-  @moduledoc false
+  @moduledoc """
+  Process of exchange of found treasures to coins.
+
+  Creates an async not linked task for each request to an external API since
+  each digging request takes some time and could be dropped by external server
+  within the contest rules.
+
+  Collected coins are sent to the Wallet process.
+  Errors are no expected here, so unsuccessful request stops the process.
+  """
 
   use GenServer
   alias GoldRushCup.{TaskSupervisor, API, LicenseHolder, Wallet}

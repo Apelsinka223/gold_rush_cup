@@ -34,6 +34,9 @@ defmodule GoldRushCup.Application do
              ]}
         },
         Enum.map(
+          # ended up with 10 as the most effective amount of workers for productive exploring
+          # as well as not overloading available contest CPU and not idle because of requests
+          # rate limit
           0..9,
           &%{
             id: "GoldRushCup.ExplorerWorker" <> to_string(&1),

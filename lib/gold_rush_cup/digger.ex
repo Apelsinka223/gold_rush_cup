@@ -1,5 +1,14 @@
 defmodule GoldRushCup.Digger do
-  @moduledoc false
+  @moduledoc """
+  Process for digging in precalculated coordinates.
+
+  Creates an async not linked task for each request to an external API since
+  each digging request takes some time and could be dropped by external server
+  within the contest rules.
+
+  Successful digging end up with call of the Exchanger process.
+  Unsuccessful digging ends up here.
+  """
 
   use GenServer
   alias GoldRushCup.{TaskSupervisor, API, LicenseHolder, Exchanger}

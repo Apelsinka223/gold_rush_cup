@@ -1,17 +1,18 @@
 defmodule GoldRushCup.Explorer do
-  @moduledoc false
+  @moduledoc """
+  Process of calculation of the coordinates to dig at.
+  Explores a map moving by a spiral from borders to the center.
+
+  Is a producer in GenStage chain and has several workers that subscribes at it
+  on the application start. Uses ets as a temporary storage.
+
+  On demand returns next coordinates to dig in reply.
+  If there is no demand, saves coordinates to ets and sends them on demand.
+  """
 
   use GenStage
   alias GoldRushCup.{TaskSupervisor, API, Digger, ExplorerWorker}
   require Logger
-
-  defmodule GoldRushCup.Coordinates do
-    defstruct [:x, :y, :depth]
-  end
-
-  defmodule Strategy do
-    defstruct [:action_list, :max_x, :max_y, :max_depth, :min_x, :min_y, :min_depth]
-  end
 
   def start_link(state) do
     GenStage.start_link(__MODULE__, state, name: state.name)
@@ -62,19 +63,25 @@ defmodule GoldRushCup.Explorer do
     end
   end
 
+  @doc """
+  After
+  """
   def handle_info({task_ref, {:ok, _, area}}, strategy) do
-    with {:ok, next_size} <- next_size_by_strategy(strategy, area) do
-      coordinates =
-        for x <- 0..div(area.size_x, next_size) |> Enum.map(&(&1 * next_size + area.x)),
-            y <- 0..div(area.size_x, next_size) |> Enum.map(&(&1 * next_size + area.y)) do
-          {{next_size, x, y}}
-        end
+    with {:ok, next_size} <- next_size_by_strategy(strategy, area),
+         coordinates = calculate_next_coordinates(area, next_size) do
 
       Enum.each(coordinates, &:ets.insert_new(strategy.ets, &1))
       {:noreply, [], strategy}
     else
       {:error, reason} ->
         {:stop, reason, strategy}
+    end
+  end
+
+  defp calculate_next_coordinates(area, next_size) do
+    for x <- 0..div(area.size_x, next_size) |> Enum.map(&(&1 * next_size + area.x)),
+        y <- 0..div(area.size_x, next_size) |> Enum.map(&(&1 * next_size + area.y)) do
+      {{next_size, x, y}}
     end
   end
 

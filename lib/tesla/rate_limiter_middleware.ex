@@ -1,4 +1,9 @@
 defmodule GoldRushCup.Tesla.RetaLimiterMiddleware do
+  @moduledoc """
+  Plug that prevents application from a violation of a requests rate limit.
+  Also provides a possibility to limit different endpoints requests separately.
+  """
+
   @behaviour Tesla.Middleware
 
   @impl Tesla.Middleware

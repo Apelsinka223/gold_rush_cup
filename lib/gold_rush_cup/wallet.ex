@@ -1,5 +1,7 @@
 defmodule GoldRushCup.Wallet do
-  @moduledoc false
+  @moduledoc """
+  Process that keeps collected coins.
+  """
 
   use GenServer
   alias GoldRushCup.{Explorer, API}

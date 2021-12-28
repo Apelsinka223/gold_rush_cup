@@ -1,5 +1,12 @@
 defmodule GoldRushCup.LicenseHolder do
-  @moduledoc false
+  @moduledoc """
+  Process that handles all provided licenses, monitors license expiration and pre-orders
+  a license in advance.
+
+  Has a simple algorithm of figuring out license cost and remembers it (since it can change).
+
+  Can handle the case when it is out of licenses and keep incoming requests from the Digger.
+  """
 
   use GenServer
   alias GoldRushCup.{TaskSupervisor, API, Wallet}
@@ -97,6 +104,10 @@ defmodule GoldRushCup.LicenseHolder do
     end
   end
 
+  @doc """
+  The case when there is no licenses left, process keeps call and once it receives a license -
+  sends a replies to all callers.
+  """
   def handle_call(:get_license, from, %{licenses: []} = state) do
     {:noreply, %{state | callers: [from | state.callers]}}
   end

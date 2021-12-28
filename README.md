@@ -4,7 +4,9 @@ An application for the online championship [Gold Rush Cup](https://cups.mail.ru/
 
 Finished with [120th](https://cups.mail.ru/en/results/goldrush?page=14&period=past&roundId=598) position in Battle Round.
 
-The app was written in order of enterntainship, to push Elixir to its boundaries, and to compair different approaches of concurrency.
+###[Rules](https://cups.online/en/tasks/1057)
+
+The app was written in order of entertainment, to push Elixir to its boundaries, and to compare different approaches of concurrency.
 This is a few-nights project, so it doesn't have tests and CD.
 
 During the development, I have tried to use different tools to build a concurrent working application, like:
@@ -12,14 +14,14 @@ During the development, I have tried to use different tools to build a concurren
 - GenStage and chain of processes in order to pass the coordinates through
 - spawning new process for every API call 😁 
 
-Turns out that spawning new process for every task is the most effective way when you have enought CPU 😅
+Turns out that spawning new process for every task is the most effective way when you have enough CPU 😅
 
-Some of the good decisions:
+Some of good decisions:
 - algorithm of the area decreasing search
 - exploring prioritization, small areas over the large
 - digging prioritization, deepest one over rest ones
-- alghorithm of finding the license cheapest price
-- license holder in one process, that request new license immidiatly after one is expired and that holds other processes requests without blocking the whole process 
+- algorithm of finding the license the cheapest price
+- license holder in one process, that request new license immediately after one is expired and that holds other processes requests without blocking the whole process 
 - custom Tesla Plug in order to prioritize one API calls over another, and in order to limit the rate of the calls, since the contest API had a rate limiter
 
 ## How to run
