@@ -1,8 +1,16 @@
 # GoldRushCup
 
-An application for the online championship [Gold Rush Cup](https://cups.mail.ru/en/contests/goldrush) championship.
+An application for the online championship [Gold Rush Cup](https://cups.mail.ru/en/contests/goldrush).
+The goal is to find as big amount of treasure chests on the field as you can.   
+To find a chest you need to follow steps:  
+1. Send an exploring request to API for an area by calculated coordinates. It can differes by size. The more an area is the more time it requires to explore.
+2. If the request returned that area contains a treasure, you can send a digging request to API. Since the field has multiple level of depth, a treasure can be placed at any of them. The deeper area is the longer time it will consume to dig.
+3. When you find a chest you should send an exchanginf request to exchange it to coins. This coins makes you points, but also could be spent for a licenses that helps you dig faster (and also are required after 50 digging requests).
 
-Finished with [120th](https://cups.mail.ru/en/results/goldrush?page=14&period=past&roundId=598) position in Battle Round.
+To master this task you need to make fast and concurrent requests and calculations, and also you need to mind an algorithm for dealing with digging licenses.
+You also need to keep in mind that provided API has some limit on amount of concurrent requests and need to avoid errors caused by ddos protection.
+
+With this solution I finished with [120th](https://cups.mail.ru/en/results/goldrush?page=14&period=past&roundId=598) position in Battle Round.
 
 ###[Rules](https://cups.online/en/tasks/1057)
 
